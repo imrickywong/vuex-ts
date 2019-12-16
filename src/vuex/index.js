@@ -1,10 +1,14 @@
 'use strict'
 
+import { installGetter } from './getter'
+import { installMutation } from './mutation'
+import { installAction } from './action'
+
 let Vue = null
 
 class Store {
-  constructor(options) {
-    let { state } = options
+  constructor(data) {
+    let { state, getters, mutations, actions } = data
     this.getters = {}
     this.mutations = {}
     this.actions = {}
@@ -14,10 +18,30 @@ class Store {
         state
       }
     })
+    installGetter.call(this, getters, state)
+    installMutation.call(this, mutations, state)
+    installAction.call(this, actions)
+
+    const { commit, dispatch } = this // 先存一份，避免this.commit会覆盖原型上的this.commit
+    // 调用原型的对应函数
+    this.commit = type => {
+      commit.call(this, type)
+    }
+    this.dispatch = type => {
+      dispatch.call(this, type)
+    }
   }
   // 访问state对象时候，就直接返回响应式的数据
   get state() {
     return this._vm.state
+  }
+  // commi调用
+  commit(type) {
+    this.mutations[type]()
+  }
+  // dispatch调用
+  dispatch(type) {
+    this.actions[type]()
   }
 }
 // Vue.use(Vuex) 调用 install 函数
